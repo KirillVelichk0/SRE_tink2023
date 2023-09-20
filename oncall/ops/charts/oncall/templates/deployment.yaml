@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    oncall-component: api
+    oncall-component: web
+    oncall-component: sender
+    oncall-version: {{ .Chart.AppVersion }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app: {{ template "fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}
+    spec:
+      containers:
+        - name: oncall
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ default "" .Values.imagePullPolicy | quote }}
+          ports:
+            - containerPort: {{ .Values.port.internal }}
+          env:
+            {{- if not .Values.dbInitialized }}
+            - name: DOCKER_DB_BOOTSTRAP
+              value: '1'
+            {{- end }}
+          volumeMounts:
+            - name: oncall-volume
+              mountPath: /home/oncall/config/config.yaml
+              subPath: config.yaml
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: {{ .Values.port.internal }}
+            initialDelaySeconds: 60
+            periodSeconds: 10
+      initContainers:
+        - name: init-oncall
+          image: busybox:latest
+          command: ['sh', '-c', "until nslookup {{ include "mysql.fullname" . }}; do echo waiting for mysql; sleep 2; done; sleep 20"]
+      volumes:
+        - name: oncall-volume
+          configMap:
+            name: {{ include "fullname" . }}

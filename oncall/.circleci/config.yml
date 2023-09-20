@@ -1,0 +1,35 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: cimg/python:3.10.8-browsers
+      - image: mysql/mysql-server:8.0
+        environment:
+          - MYSQL_ROOT_PASSWORD=1234
+          - MYSQL_ROOT_HOST=%
+
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install libsasl2-dev python3-dev libldap2-dev libssl-dev mysql-client
+      - run:
+          name: Prepare virtualenv
+          command: |
+            virtualenv venv
+            source venv/bin/activate
+            python setup.py develop
+            pip install -e .[dev]
+      - run:
+          name: Setup MySQL
+          command: |
+            bash .ci/setup_mysql.sh
+      - run:
+          name: Run tests
+          command: |
+            source venv/bin/activate
+            make serve &
+            make check
+
