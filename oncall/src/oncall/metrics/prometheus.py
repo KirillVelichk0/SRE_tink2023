@@ -16,6 +16,7 @@ logger = logging.getLogger()
 class prometheus(object):
     def __init__(self, config, appname):
         try:
+            logger.info("Trying to create prometheus")
             port = int(config['prometheus'][appname]['server_port'])
         except (ValueError, KeyError):
             logger.warning('prometheus server_port not present in config. running without metrics.')
@@ -23,7 +24,7 @@ class prometheus(object):
             return
 
         self.gauges = {}
-
+        logger.info("Prometheus created")
         # per docs, app name in metric prefix needs to be one word
         self.appname = re.sub('[^a-zA-Z0-9]+', '', appname)
 

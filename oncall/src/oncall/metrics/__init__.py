@@ -18,6 +18,7 @@ metrics_provider = None
 
 
 def get_metrics_provider(config, app_name):
+    logger.info('getting metrics provider')
     return import_custom_module('oncall.metrics',
                                 config['metrics'])(config, app_name)
 

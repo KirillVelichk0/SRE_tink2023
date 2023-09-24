@@ -138,6 +138,8 @@ def main():
     init_notifier(config)
     metrics_on = False
     if 'metrics' in config:
+        print("metrics in config")
+        logger.warning("metrics in config")
         metrics.init(config, 'oncall-notifier', {'message_blackhole_cnt': 0, 'message_sent_cnt': 0, 'message_fail_cnt': 0})
         metrics_worker = spawn(metrics_sender)
         metrics_on = True
@@ -192,4 +194,6 @@ def main():
 
 
 if __name__ == '__main__':
+    print("creating notifier")
+    logger.info("creating notifier")
     main()

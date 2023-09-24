@@ -13,7 +13,6 @@ COPY setup.py /home/oncall/source/setup.py
 COPY MANIFEST.in /home/oncall/source/MANIFEST.in
 COPY README.md /home/oncall/source/README.md
 COPY LICENSE /home/oncall/source/LICENSE
-
 WORKDIR /home/oncall
 
 RUN chown -R oncall:oncall /home/oncall/source /var/log/nginx /var/lib/nginx \
@@ -29,6 +28,7 @@ COPY db /home/oncall/db
 COPY configs /home/oncall/config
 COPY ops/entrypoint.py /home/oncall/entrypoint.py
 
-EXPOSE 8080
+EXPOSE 8081
+
 
 CMD ["sudo", "-EHu", "oncall", "bash", "-c", "source /home/oncall/env/bin/activate && python -u /home/oncall/entrypoint.py"]

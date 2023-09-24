@@ -1,11 +1,15 @@
 version: '3'
 
+volumes:
+  prometheus_data: {}
+  vmdata: {}
+
 services:
   oncall-web:
     build: .
     hostname: oncall
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       - DOCKER_DB_BOOTSTRAP=1
       - IRIS_API_HOST=iris
@@ -21,6 +25,60 @@ services:
       - MYSQL_ROOT_PASSWORD=1234
     networks:
       - iris
+  
+  prometheus:
+    image: prom/prometheus:v2.36.2
+    container_name: prometheus
+    hostname: prometheus
+    ports:
+    - 9090:9090
+    command:
+    - '--config.file=/etc/prometheus/prometheus.yml' 
+    - '--web.console.libraries=/usr/share/prometheus/console_libraries' 
+    - '--web.console.templates=/usr/share/prometheus/consoles'
+    #- '--enable_feature=agent'
+    volumes:
+    - ./prometheus:/etc/prometheus/
+    - prometheus_data:/prometheus
+    depends_on:
+    - cadvisor
+    restart: always
+    environment:
+      - TZ=Europe/Moscow
+    networks:
+      - iris
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+    - 8080:8080
+    volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:rw
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
+    networks:
+      - iris
+  victoriametrics:
+    container_name: victoriametrics
+    image: victoriametrics/victoria-metrics:v1.91.2
+    ports:
+      - 8428:8428
+      - 8089:8089
+      - 8089:8089/udp
+      - 2003:2003
+      - 2003:2003/udp
+      - 4242:4242
+    volumes:
+      - vmdata:/storage
+    command:
+      - "--storageDataPath=/storage"
+      - "--opentsdbListenAddr=:4242"
+      - "--httpListenAddr=:8428"
+    networks:
+      - iris
+    restart: always
 
 networks:
   iris:
