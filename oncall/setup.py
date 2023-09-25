@@ -43,6 +43,7 @@ setuptools.setup(
         'beaker',
         'cryptography==3.1',
         'python-ldap',
+        'prometheus_client',
         'pytz',
         'irisclient',
         'slackclient==1.3.1',

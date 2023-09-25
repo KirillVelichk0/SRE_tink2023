@@ -33,6 +33,7 @@ class prometheus(object):
         self.enable_metrics = True
 
     def send_metrics(self, metrics):
+        logger.info("_____SEND_METRICS__FROM___PROMETHEUS________________")
         if not self.enable_metrics:
             return
         for metric, value in metrics.items():

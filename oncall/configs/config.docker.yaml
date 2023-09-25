@@ -1,12 +1,9 @@
 server:
   host: 0.0.0.0
-  port: 8081
-debug: True
-oncall_host: http://localhost:8080
-metrics: 
-  prometheus: 
-    oncall-notifier:
-      server_port: 9090
+  port: 8080
+debug: False
+oncall_host: http://localhost:8080 #а собсна порт контейнера или реальный???
+metrics: prometheus
 db:
   conn:
     kwargs:
@@ -37,6 +34,11 @@ messengers:
 
 # allow_origins_list:
 #   - http://www.example.com
+
+prometheus: 
+    oncall-notifier:
+      host: prometheus
+      server_port: 8082
 
 supported_timezones:
   - 'US/Pacific'
