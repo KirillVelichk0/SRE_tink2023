@@ -1,55 +1,23 @@
-Oncall [![Gitter chat](https://badges.gitter.im/irisoncall/Lobby.png)](https://gitter.im/irisoncall/Lobby) [![Build Status](https://circleci.com/gh/linkedin/oncall.svg?style=shield)](https://circleci.com/gh/linkedin/oncall)
-======
 
-<p align="center"><img src="https://github.com/linkedin/oncall/raw/master/docs/source/_static/demo.png" width="600"></p>
 
-See [admin docs](http://oncall.tools/docs/admin_guide.html) for information on
-how to run and manage Oncall.
-
-Development setup
+# HOMEWORKS
 -----------------
-### Prerequisites
+## HOMEWORK2. 
+### Список внесенных изменений.
+Настроены конфиги docker(Сконфигурирован docker-compose.yml, который поднимает контейнеры Oncall, mysql, prometheus, cadvisor и victoriametrics). Для нужд oncall наружу из контейнера вытащен порт 8081:8081.
 
-  * Debian/Ubuntu - `sudo apt-get install libsasl2-dev python3-dev libldap2-dev libssl-dev python-pip python-setuptools mysql-server mysql-client`
+Настроены конфиги prometheus. А именно:  
+- указаны url подключаемых docker контейнеров  
+- создан recording rule для метрик oncall
+- базовая настройка прочих параметров (таких как global scrape_interval)
 
-### Install
+Настроены конфиги oncall:  
+- в поле metrics задан prometheus
+- прописана конфигурация prometheus, задающая настройки oncall-notifier (на каком порте запускаться. А именно - порт 8082)
 
-```bash
-python setup.py develop
-pip install -e '.[dev]'
-```
+Отредактирована конфигурация nginx (daemons/nginx.conf):
+- так как oncall-notifier запускается как отдельный процесс, он не может находиться на том же порте, что и oncall. Поэтому, oncall запускается на порту 8080, а notifier - 8082. При этом, nginx осуществляет routing запросов с порта 8081. Если в запросе присутствует /metrics, то nginx проксирует на порт 8082. Иначе - на порт 8080. Как уже упомяналось ранее, порт 8081 - наружный.
 
-Setup mysql schema:
-
-```bash
-mysql -u root -p < ./db/schema.v0.sql
-```
-
-Setup app config by editing configs/config.yaml.
-
-Optionally, you can import dummy data for testing:
-
-```bash
-mysql -u root -p -o oncall < ./db/dummy_data.sql
-```
-
-### Run
-
-One of the following commands:
-
-* `goreman start`
-* `procman start`
-* `make serve`
-* `oncall-dev ./configs/config.yaml`
-
-
-### Test
-
-```bash
-make test
-```
-
-Check out https://github.com/linkedin/oncall/issues for a list of outstanding
-issues, and tackle any one that catches your interest. Contributions are
-expected to be tested thoroughly and submitted with unit/end-to-end tests; look
-in the e2e directory for our suite of end-to-end tests.
+Перечисленных выше мер достаточно, чтобы prometheus мог получать метрики. Но, так как на семинаре также было сказано показать использование promQL и написать recording rule:  
+- в папке promQL можно увидеть текстовый файл с несколькими примерами запросов и пояснениями к ним. Также, promQL был использован в recording rule.
+- создан recording rule oncall:some_weird_oncall_metric:rate_sent_div_blackhole. Описание данного правила можно увидеть в файле prometheus/some_rule.yml. Данное правило рассчитывается на основе стандартных метрик, посылаемых oncall-ом (довольно странных).
