@@ -8,7 +8,7 @@ services:
   custom-exporter:
     build: ./custom_exporter
     ports:
-      - "9200:9200"
+      - "9210:9210"
     networks:
       - iris
       

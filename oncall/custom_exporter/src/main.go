@@ -18,7 +18,7 @@ func main() {
 		log.Errorf("Cant parse data from service_config.yaml with error %s", err.Error())
 		os.Exit(1)
 	}
-	host_url := config_data.ExporterHost + ":" +
+	host_url := ":" +
 		strconv.FormatUint(uint64(config_data.ExporterPort), 10)
 	log.Infof(host_url)
 	var bind string
