@@ -5,6 +5,13 @@ volumes:
   vmdata: {}
 
 services:
+  custom-exporter:
+    build: ./custom_exporter
+    ports:
+      - "9200:9200"
+    networks:
+      - iris
+      
   oncall-web:
     build: .
     hostname: oncall

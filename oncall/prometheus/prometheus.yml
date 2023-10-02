@@ -37,7 +37,13 @@ scrape_configs:
       - targets:
           - 'cadvisor:8080'
     
+  - job_name: 'custom'
+    scrape_interval: 15s
 
+    static_configs:
+      - targets:
+          - 'custom-exporter:9210'
+  
   - job_name: 'oncall'
 
     scrape_interval: 15s

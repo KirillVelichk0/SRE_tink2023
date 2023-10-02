@@ -1,0 +1,6 @@
+#!/bin/bash
+go mod init main
+go get gopkg.in/yaml.v2
+go get github.com/sirupsen/logrus
+go get github.com/prometheus/client_golang/prometheus
+go get github.com/prometheus/client_golang/prometheus/promhttp
