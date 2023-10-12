@@ -5,6 +5,31 @@ volumes:
   vmdata: {}
 
 services:
+  mysql-exporter:
+    image: prom/mysqld-exporter
+    command: 
+      - "--collect.global_status"
+      - "--collect.info_schema.innodb_metrics"
+      - "--collect.auto_increment.columns"
+      - "--collect.info_schema.processlist"
+      - "--collect.binlog_size"
+      - "--collect.info_schema.tablestats"
+      - "--collect.global_variables"
+      - "--collect.info_schema.query_response_time"
+      - "--collect.info_schema.userstats"
+      - "--collect.info_schema.tables"
+      - "--collect.perf_schema.tablelocks"
+      - "--collect.perf_schema.file_events"
+      - "--collect.perf_schema.eventswaits"
+      - "--collect.perf_schema.indexiowaits"
+      - "--collect.perf_schema.tableiowaits"
+    volumes:
+      - ./configs/my.cnf:/.my.cnf
+    ports:
+      - "9104:9104"
+    networks:
+      - iris
+
   custom-exporter:
     build: ./custom_exporter
     ports:
@@ -27,7 +52,12 @@ services:
   
   oncall-mysql:
     hostname: oncall-mysql
-    image: mysql:5.7
+    image: mysql:8.0
+    ports:
+      - "3305:3306"
+    volumes:
+      #- ./mysql-data:/var/lib/mysql
+      - ./db/entr:/docker-entrypoint-initdb.d
     environment:
       - MYSQL_ROOT_PASSWORD=1234
     networks:
@@ -106,3 +136,7 @@ services:
 networks:
   iris:
     name: iris
+    #ipam:
+    # config:
+    #  - subnet: "192.168.96.0/20"
+    #    gateway: "192.168.96.1"
