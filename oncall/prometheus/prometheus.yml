@@ -50,9 +50,6 @@ scrape_configs:
         replacement: blackbox:9115
   - job_name: oncall
     scrape_interval: 15s
-    dns_sd_configs:
-      - names:
-          - oncall
-        type: A
-        port: 8081
-        
+    static_configs:
+      - targets:
+          - oncall:8081
