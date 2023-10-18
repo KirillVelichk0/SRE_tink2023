@@ -1,5 +1,7 @@
 *__pycache__*
-*env/*
+*.env*
 */go.sum
 */main
 */build/*
+/oncall/filebeat_src/
+*/tmp/

@@ -3,8 +3,83 @@ version: '3'
 volumes:
   prometheus_data: {}
   vmdata: {}
+  db_logs:
+    driver: local
+    #driver_opts:
+      #device: 
+  oncall_logs:
+    driver: local
+  nginx_oncall_logs:
+    driver: local
+  filebeatdata:
+  
+  
 
 services:
+  filebeat:
+    depends_on:
+     - logstash
+     - oncall-web
+     - oncall-mysql
+    image: elastic/filebeat:8.10.3
+    user: root
+    volumes:
+     - filebeatdata:/usr/share/filebeat/data
+     - "./filebeat_ingest_data/:/usr/share/filebeat/ingest_data/"
+     - "./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro"
+     - db_logs:/var/log/mysql
+     - oncall_logs:/home/oncall/var/log/uwsgi
+     - nginx_oncall_logs:/home/oncall/var/log/nginx
+    networks:
+      - iris
+
+
+  elasticsearch:
+    image: elasticsearch:7.16.1
+    volumes:
+      - ./configs/elasticsearch/config.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./docker_volumes/elasticsearch/data:/usr/share/elasticsearch/data
+      - ./docker_volumes/elasticsearch/logs:/usr/share/elasticsearch/logs/
+    environment:
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
+      ELASTIC_USERNAME: "elastic"
+      ELASTIC_PASSWORD: "MyPw123"
+      discovery.type: single-node
+    networks:
+      - iris
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+  logstash:
+    image: logstash:7.16.2
+    volumes:
+      - ./configs/logstash/config.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./configs/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./configs/logstash/pipelines:/usr/share/logstash/config/pipelines:ro
+    environment:
+      LS_JAVA_OPTS: "-Xmx512m -Xms512m"
+    ports:
+      - "5044:5044"
+      - "5000:5000"
+      - "9600:9600"
+    networks:
+      - iris
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: kibana:7.16.1
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./configs/kibana/config.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - iris
+    ports:
+      - "5601:5601"
+
+
   mysql-exporter:
     image: prom/mysqld-exporter
     command: 
@@ -47,17 +122,19 @@ services:
       - IRIS_API_HOST=iris
     volumes:
       - ./configs/config.docker.yaml:/home/oncall/config/config.yaml
+      - oncall_logs:/home/oncall/var/log/uwsgi
+      - nginx_oncall_logs:/home/oncall/var/log/nginx/
     networks:
       - iris
   
   oncall-mysql:
     hostname: oncall-mysql
     image: mysql:8.0
-    ports:
-      - "3305:3306"
     volumes:
       #- ./mysql-data:/var/lib/mysql
       - ./db/entr:/docker-entrypoint-initdb.d
+      - "db_logs:/var/log/mysql"
+      - "./mysql/conf:/etc/mysql/conf.d"
     environment:
       - MYSQL_ROOT_PASSWORD=1234
     networks:
@@ -132,6 +209,8 @@ services:
     networks:
       - iris
     restart: always
+
+
 
 networks:
   iris:

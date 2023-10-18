@@ -3,3 +3,4 @@ groups:
     rules:
     - record: oncall:some_weird_oncall_metric:rate_sent_div_blackhole
       expr: rate(oncallnotifier_message_sent_cnt[10m]) / rate(oncallnotifier_message_blackhole_cnt[10m])
+    

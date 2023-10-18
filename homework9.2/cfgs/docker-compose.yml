@@ -1,0 +1,142 @@
+version: '3'
+
+volumes:
+  prometheus_data: {}
+  vmdata: {}
+
+services:
+  mysql-exporter:
+    image: prom/mysqld-exporter
+    command: 
+      - "--collect.global_status"
+      - "--collect.info_schema.innodb_metrics"
+      - "--collect.auto_increment.columns"
+      - "--collect.info_schema.processlist"
+      - "--collect.binlog_size"
+      - "--collect.info_schema.tablestats"
+      - "--collect.global_variables"
+      - "--collect.info_schema.query_response_time"
+      - "--collect.info_schema.userstats"
+      - "--collect.info_schema.tables"
+      - "--collect.perf_schema.tablelocks"
+      - "--collect.perf_schema.file_events"
+      - "--collect.perf_schema.eventswaits"
+      - "--collect.perf_schema.indexiowaits"
+      - "--collect.perf_schema.tableiowaits"
+    volumes:
+      - ./configs/my.cnf:/.my.cnf
+    ports:
+      - "9104:9104"
+    networks:
+      - iris
+
+  custom-exporter:
+    build: ./custom_exporter
+    ports:
+      - "9210:9210"
+    networks:
+      - iris
+      
+  oncall-web:
+    build: .
+    hostname: oncall
+    ports:
+      - "8081:8081"
+    environment:
+      - DOCKER_DB_BOOTSTRAP=1
+      - IRIS_API_HOST=iris
+    volumes:
+      - ./configs/config.docker.yaml:/home/oncall/config/config.yaml
+    networks:
+      - iris
+  
+  oncall-mysql:
+    hostname: oncall-mysql
+    image: mysql:8.0
+    ports:
+      - "3305:3306"
+    volumes:
+      #- ./mysql-data:/var/lib/mysql
+      - ./db/entr:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+    networks:
+      - iris
+  
+  blackbox:
+    image: prom/blackbox-exporter
+    container_name: blackbox
+    hostname: blackbox
+    ports:
+      - 9115:9115
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/blackbox/blackbox.yml"
+    volumes:
+      - ./blackbox:/etc/blackbox
+    environment:
+      TZ: "Europe/Moscow"
+    networks:
+      - iris
+
+  prometheus:
+    image: prom/prometheus:v2.36.2
+    container_name: prometheus
+    hostname: prometheus
+    ports:
+    - 9090:9090
+    command:
+    - '--config.file=/etc/prometheus/prometheus.yml' 
+    - '--web.console.libraries=/usr/share/prometheus/console_libraries' 
+    - '--web.console.templates=/usr/share/prometheus/consoles'
+    #- '--enable_feature=agent'
+    volumes:
+    - ./prometheus:/etc/prometheus/
+    - prometheus_data:/prometheus
+    depends_on:
+    - cadvisor
+    restart: always
+    environment:
+      - TZ=Europe/Moscow
+    networks:
+      - iris
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+    - 8080:8080
+    volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:rw
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
+    networks:
+      - iris
+  victoriametrics:
+    container_name: victoriametrics
+    image: victoriametrics/victoria-metrics:v1.91.2
+    ports:
+      - 8428:8428
+      - 8089:8089
+      - 8089:8089/udp
+      - 2003:2003
+      - 2003:2003/udp
+      - 4242:4242
+    volumes:
+      - vmdata:/storage
+    command:
+      - "--storageDataPath=/storage"
+      - "--opentsdbListenAddr=:4242"
+      - "--httpListenAddr=:8428"
+    networks:
+      - iris
+    restart: always
+
+networks:
+  iris:
+    name: iris
+    #ipam:
+    # config:
+    #  - subnet: "192.168.96.0/20"
+    #    gateway: "192.168.96.1"
