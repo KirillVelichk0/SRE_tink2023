@@ -54,6 +54,7 @@ services:
   logstash:
     image: logstash:7.16.2
     volumes:
+      - ./configs/logstash/patterns:/usr/share/logstash/config/patterns:ro
       - ./configs/logstash/config.yml:/usr/share/logstash/config/logstash.yml:ro
       - ./configs/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
       - ./configs/logstash/pipelines:/usr/share/logstash/config/pipelines:ro
