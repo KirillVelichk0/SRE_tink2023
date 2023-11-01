@@ -12,10 +12,22 @@ volumes:
   nginx_oncall_logs:
     driver: local
   filebeatdata:
+  grafana-data:
   
   
 
 services:
+  grafana:
+    image: grafana/grafana:7.5.7
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    volumes:
+      - ./configs/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - grafana-data:/var/lib/grafana
+    networks:
+      - iris
+
   filebeat:
     depends_on:
      - logstash
