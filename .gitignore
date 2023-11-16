@@ -5,3 +5,4 @@
 */build/*
 /oncall/filebeat_src/
 */tmp/
+*/docker_volumes/

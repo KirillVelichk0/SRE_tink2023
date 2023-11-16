@@ -1,6 +1,22 @@
+apiVersion: 1
 datasources:
 - name: Prometheus
   access: proxy
   type: prometheus
   url: http://prometheus:9090
   isDefault: true
+- name: Elastic
+  type: elasticsearch
+  basicAuth: true
+  basicAuthUser: elastic
+  database: 'logs_fbfilebeat-8.10.3'
+  access: proxy
+  url: http://elasticsearch:9200
+  jsonData:
+    index: 'logs_fbfilebeat-8.10.3'
+    #interval: Daily
+    esVersion: 70
+    timeField: '@timestamp'
+  secureJsonData:
+    basicAuthPassword: 'MyPw123'
+
