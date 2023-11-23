@@ -1,0 +1,5 @@
+---
+exporter_port: 9211 
+exporter_host: localhost
+target_host: oncall
+target_port: 8081

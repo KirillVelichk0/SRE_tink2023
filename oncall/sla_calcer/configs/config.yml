@@ -1,0 +1,5 @@
+---
+prom_host: prometheus
+prom_port: 9090
+db_host: influxdb
+db_port: 8086
