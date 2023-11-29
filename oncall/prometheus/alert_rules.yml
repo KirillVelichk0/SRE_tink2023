@@ -1,0 +1,151 @@
+---
+groups:
+- name: node
+  rules:
+  - alert: BadCPULoad
+    expr: |
+      ((1 - (sum by()(sum by (mode) (node_cpu_seconds_total{mode="idle"})
+        - sum by (mode) (node_cpu_seconds_total{mode="idle"} offset 1m))
+        / (sum by () (node_cpu_seconds_total)
+          - sum by () (node_cpu_seconds_total offset 1m)))) * 100) > 90
+    for: 0m
+    labels:
+      instance: "oncall:8081"
+      severity: warning
+    annotations:
+      summary: Too big CPU load. Limit - 90%. Actual {{ $value }}
+  - alert: BadCPULoadCritical
+    expr: |
+      ((1 - (sum by()(sum by (mode) (node_cpu_seconds_total{mode="idle"})
+        - sum by (mode) (node_cpu_seconds_total{mode="idle"} offset 1m))
+        / (sum by () (node_cpu_seconds_total)
+          - sum by () (node_cpu_seconds_total offset 1m)))) * 100) > 95
+    for: 0m
+    labels:
+      instance: "oncall:8081"
+      severity: critical
+    annotations:
+      summary: Too big CPU load. Limit - 95%. Actual {{ $value }}
+  - alert: BadRAMAbailable
+    expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) /
+      node_memory_MemTotal_bytes * 100) > 90
+    for: 1m
+    labels:
+      instance: "oncall:8081"
+      severity: warning
+    annotations:
+      summary: Too much RAM used. Limit value - 90%. Actual - {{ $value }}
+  - alert: BadRAMAbailableCritical
+    expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) /
+      node_memory_MemTotal_bytes * 100) > 95
+    for: 15s
+    labels:
+      instance: "oncall:8081"
+      severity: critical
+    annotations:
+      summary: Too much RAM used. Limit value - 95%. Actual - {{ $value }}
+  - alert: BadFilesystemMem
+    expr: >
+      ((1 - (node_filesystem_avail_bytes{mountpoint="/"}  /
+      node_filesystem_size_bytes{mountpoint="/"})) * 100) > 90
+    for: 1m
+    labels:
+      instance: "oncall:8081"
+      severity: warning
+    annotations:
+      summary: Too much filesystem memory used. Limit value - 90%. Actual - {{ $value }}
+  - alert: BadFilesystemMemCrirical
+    expr: >
+      ((1 - (node_filesystem_avail_bytes{mountpoint="/"}  /
+      node_filesystem_size_bytes{mountpoint="/"})) * 100) > 95
+    for: 15s
+    labels:
+      instance: "oncall:8081"
+      severity: critical
+    annotations:
+      summary: Too much filesystem memory used. Limit value - 95%. Actual - {{ $value }}
+- name: database
+  rules:
+  - alert: OncallDatabaseCrashed
+    expr: mysql_up == 0
+    for: 0m
+    labels:
+      instance: "oncall:8081"
+      severity: critical
+    annotations:
+      summary: Oncall database crashed
+  - alert: OncallDatabaseTooMuchBadConnections
+    expr: >
+      100 - ((sum by (instance) (mysql_global_status_connection_errors_total) -
+      (sum by (instance)
+      (mysql_global_status_connection_errors_total  offset 1m))) /  (sum by
+      (instance) (mysql_global_status_connections)
+        - (sum by (instance) (mysql_global_status_connections  offset 1m))) * 100)
+        < 90
+    for: 0m
+    labels:
+      instance: "oncall:8081"
+      severity: warning
+    annotations:
+      summary: >
+        Oncall database dropped too much connections. Limit of bad connections
+        - 10%\n Percent of dropped - {{ $value }}
+  - alert: OncallDatabaseTooMuchBadConnectionsCritical
+    expr: >
+      100 - ((sum by (instance) (mysql_global_status_connection_errors_total) -
+      (sum by (instance)
+      (mysql_global_status_connection_errors_total  offset 1m))) /  (sum by
+      (instance) (mysql_global_status_connections)
+        - (sum by (instance) (mysql_global_status_connections  offset 1m))) * 100)
+        < 70
+    for: 0m
+    labels:
+      instance: "oncall:8081"
+      severity: critical
+    annotations:
+      summary: >
+        Oncall database dropped too much connections. Limit of bad connections
+        - 70%\n Percent of dropped - {{ $value }}
+- name: blackbox
+  rules:
+  - alert: BadStatusCode
+    expr: probe_http_status_code != 200
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: >
+        Oncall send bad status codes for minute. Last status code - {{ $value
+        }}
+- name: duty
+  rules:
+  - alert: NoPrimarySREOfficer
+    expr: duty{role="primary"} == 0
+    for: 5m
+    labels:
+      instance: "oncall:8081"
+      severity: warning
+    annotations:
+      summary: There is no SRE assigned duty officer
+- name: request_process_time
+  rules:
+  - alert: TooLongRequestProcessTime
+    expr: >
+      ((sum(Oncall_Oncall_get_teams_resp_time_bucket{le="100"}) - sum(Oncall_Oncall_get_teams_resp_time_bucket{le="100"} offset 1m)) / (sum(Oncall_Oncall_get_teams_resp_time_bucket{le="+Inf"}) - sum(Oncall_Oncall_get_teams_resp_time_bucket{le="+Inf"} offset 1m)) * 100)  < 90
+    for: 0m
+    labels:
+      instance: "oncall:8081"
+      severity: warning
+    annotations:
+     summary: >
+      "Percent limit for 100ms requests is 90. Actual value - {{ $value }}"
+  - alert: TooLongRequestProcessTimeCritical
+    expr: >
+      ((sum(Oncall_Oncall_get_teams_resp_time_bucket{le="1000"}) - sum(Oncall_Oncall_get_teams_resp_time_bucket{le="1000"} offset 1m)) / (sum(Oncall_Oncall_get_teams_resp_time_bucket{le="+Inf"}) - sum(Oncall_Oncall_get_teams_resp_time_bucket{le="+Inf"} offset 1m)) * 100)  < 95
+    for: 0m
+    labels:
+      instance: "oncall:8081"
+      severity: critical
+    annotations:
+     summary: >
+      "Percent limit for 1000ms requests is 95. Actual value - {{ $value }}"

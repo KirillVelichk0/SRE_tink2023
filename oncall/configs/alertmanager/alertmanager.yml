@@ -1,0 +1,47 @@
+---
+route:
+  group_by:
+    - alertname
+    - instance
+  repeat_interval: 1m
+  routes:
+    - match:
+        severity: warning
+      receiver: warning
+      mute_time_intervals:
+        - weekday_not_work
+        - holidays
+    - match:
+        severity: critical
+      receiver: crit
+  receiver: default-receiver
+time_intervals:     
+  - name: weekday_not_work
+    time_intervals:
+    - weekdays:
+      - monday
+      - tuesday
+      - wednesday
+      - thursday
+      - friday
+      times:
+      - start_time: 09:00
+        end_time: 18:00
+  - name: holidays
+    time_intervals:
+    - weekdays:
+      - saturday
+      - sunday
+      times:
+      - start_time: 00:00
+        end_time: 23:59
+receivers:
+  - name: default-receiver
+    webhook_configs:
+      - url: http://telegram:8000/alert/warn
+  - name: warning
+    webhook_configs:
+      - url: http://telegram:8000/alert/warn
+  - name: crit
+    webhook_configs:
+      - url: http://telegram:8000/alert/crit
