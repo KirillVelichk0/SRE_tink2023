@@ -186,7 +186,19 @@ services:
     build: ./sla_calcer
     networks:
       - iris
-      
+
+  nginx: 
+    image: nginx:latest
+    hostname: nginx_oncall
+    container_name: nginx
+    volumes:
+      - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - 8083:8083
+    networks:
+      - iris
+
+
   oncall-web:
     build: .
     hostname: oncall
@@ -194,6 +206,20 @@ services:
       - "8081:8081"
     environment:
       - DOCKER_DB_BOOTSTRAP=1
+      - IRIS_API_HOST=iris
+    volumes:
+      - ./configs/config.docker.yaml:/home/oncall/config/config.yaml
+      - oncall_logs:/home/oncall/var/log/uwsgi
+      - nginx_oncall_logs:/home/oncall/var/log/nginx/
+    networks:
+      - iris
+
+  oncall-web2:
+    build: .
+    hostname: oncall_two
+    ports:
+      - "8082:8081"
+    environment:
       - IRIS_API_HOST=iris
     volumes:
       - ./configs/config.docker.yaml:/home/oncall/config/config.yaml
