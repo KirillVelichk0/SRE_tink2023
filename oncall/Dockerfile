@@ -13,7 +13,7 @@ COPY MANIFEST.in /home/oncall/source/MANIFEST.in
 COPY README.md /home/oncall/source/README.md
 COPY LICENSE /home/oncall/source/LICENSE
 WORKDIR /home/oncall
-
+RUN usermod -a -G root oncall
 RUN chown -R oncall:oncall /home/oncall/source /var/log/nginx /var/lib/nginx \
     && sudo -Hu oncall mkdir -p /home/oncall/var/log/uwsgi /home/oncall/var/log/nginx /home/oncall/var/run /home/oncall/var/relay \
     && sudo -Hu oncall python3 -m venv /home/oncall/env\
