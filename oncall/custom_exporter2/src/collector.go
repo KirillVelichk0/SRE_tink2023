@@ -82,7 +82,6 @@ func (c *PromCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect prometheus collect
 func (c *PromCollector) Collect(ch chan<- prometheus.Metric) {
-	c.logger.Println("Getting info")
 	val := atomic.AddUint64(&c.counter, 1)
 	//var stats []RequestStatictic
 	for statistic, err := c.requestsCollector.TryGet(); err == nil; statistic, err = c.requestsCollector.TryGet() {

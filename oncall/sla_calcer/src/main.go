@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 )
 
 func main() {
@@ -22,7 +21,6 @@ func main() {
 	}
 	slaC := SLACreater{}
 	for {
-		log.Println("Handling")
 		t, err := prom.GetTimeToResponce()
 		if err != nil {
 			fmt.Println(err.Error())

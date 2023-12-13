@@ -6,7 +6,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -43,24 +42,19 @@ func ConstructDutyCollectorFromYaml(path string, target_url string) (*DutyCollec
 
 // Describe prometheus describe
 func (e *DutyCollector) Describe(ch chan<- *prometheus.Desc) {
-	log.Infof("Creating describe")
 	e.desk = prometheus.NewDesc(e.MetricName, "This is roles info", e.Labels, nil)
 }
 
 // Collect prometheus collect
 func (e *DutyCollector) Collect(ch chan<- prometheus.Metric) {
-	log.Infof("Getting team list")
 	teams, err := GetTeamsList(e.target_url)
 	if err != nil {
-		log.Errorf("Teams from url %s dont getted with error %s", e.target_url, err.Error())
 		return
 	}
 	rangeGetter := new(CurTimeGetter)
 	for _, team_name := range teams {
 		team_roles, err := GetEventsFromTeamName(e.target_url, team_name, rangeGetter)
 		if err != nil {
-			log.Errorf("Roles from url %s and team %s dont getted with error %s",
-				e.target_url, team_name, err.Error())
 			return
 		}
 		for role, count := range team_roles {
