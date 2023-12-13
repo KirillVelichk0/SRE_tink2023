@@ -70,6 +70,12 @@ scrape_configs:
           - mysql-exporter:9104
         labels:
           alias: mysql_exporter
+  - job_name: nginx_exporter
+    static_configs:
+      - targets:
+          - nginx_exporter:9113
+        labels:
+          alias: nginx_exporter
 alerting:
   alertmanagers:
     - scheme: http

@@ -20,13 +20,6 @@ RUN chown -R oncall:oncall /home/oncall/source /var/log/nginx /var/lib/nginx \
     && sudo -Hu oncall /bin/bash -c 'source /home/oncall/env/bin/activate && cd /home/oncall/source && pip install wheel && pip install .'
 
 
-COPY ops/config/systemd /etc/systemd/system
-COPY ops/daemons /home/oncall/daemons
-COPY ops/daemons/uwsgi-docker.yaml /home/oncall/daemons/uwsgi.yaml
-COPY db /home/oncall/db
-COPY configs /home/oncall/config
-COPY ops/entrypoint.py /home/oncall/entrypoint.py
-
 EXPOSE 8081
 
 
