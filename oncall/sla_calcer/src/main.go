@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 func main() {
 	cfg, err := ParseConfig("../configs/config.yml")
 	if err != nil {
@@ -14,7 +10,7 @@ func main() {
 	for {
 		influx, err = CreateInfluxClient()
 		if err != nil {
-			fmt.Println(err.Error())
+			//fmt.Println(err.Error())
 		} else {
 			break
 		}
@@ -23,11 +19,11 @@ func main() {
 	for {
 		t, err := prom.GetTimeToResponce()
 		if err != nil {
-			fmt.Println(err.Error())
+			//fmt.Println(err.Error())
 		}
 		form, err := FormatTimeResp(t)
 		if err != nil {
-			fmt.Println(err.Error())
+			//fmt.Println(err.Error())
 		}
 		sla := slaC.GenMetric(form)
 		for key, val := range sla {
