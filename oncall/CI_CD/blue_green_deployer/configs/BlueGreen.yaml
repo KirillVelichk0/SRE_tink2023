@@ -1,0 +1,3 @@
+GreenUrl: http://oncall-green:8081
+BlueUrl: http://oncall-blue:8081
+StartStateIsGreen: true

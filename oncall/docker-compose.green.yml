@@ -1,0 +1,42 @@
+volumes:
+  oncall_logs:
+    driver: local
+  nginx_oncall_logs:
+    driver: local
+services:
+  oncall-green:
+    image: kirillvelichkoa/custom_oncall:latest
+    hostname: oncall-green
+    container_name: oncall
+    ports:
+      - target: 8081
+        published: 8081
+        protocol: tcp
+        mode: host
+    environment:
+      - DOCKER_DB_BOOTSTRAP=1
+      - IRIS_API_HOST=iris
+    volumes:
+      - ./ops/config/systemd:/etc/systemd/system
+      - ./ops/daemons:/home/oncall/daemons
+      - ./ops/daemons/uwsgi-docker.yaml:/home/oncall/daemons/uwsgi.yaml
+      - ./db:/home/oncall/db
+      - ./configs/my.cnf:/home/oncall/config/my.cnf
+      - ./ops/entrypoint.py:/home/oncall/entrypoint.py
+      - ./configs/config.docker.yaml:/home/oncall/config/config.yaml
+      - oncall_logs:/home/oncall/var/log/uwsgi
+      - nginx_oncall_logs:/home/oncall/var/log/nginx/
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+    networks:
+      - iris
+
+networks:
+  iris:
+    external: true
+    name: iris

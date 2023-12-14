@@ -1,0 +1,391 @@
+version: '3'
+
+volumes:
+  alertmanager-data:
+  prometheus_data: {}
+  vmdata: {}
+  db_logs:
+    driver: local
+    #driver_opts:
+      #device: 
+  oncall_logs:
+    driver: local
+  nginx_oncall_logs:
+    driver: local
+  filebeatdata:
+  grafana-data:
+  
+  
+
+services:
+  telegram:
+    image: kirillvelichkoa/telegram_alert_oncall_bot:latest
+    hostname: telegram
+    container_name: telegram
+    stop_signal: SIGINT
+    env_file: .env
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_WARN_CHAT_ID=${TELEGRAM_WARN_CHAT_ID}
+      - TELEGRAM_CRITICAL_CHAT_ID=${TELEGRAM_CRITICAL_CHAT_ID}
+    ports:
+      - target: 8080
+        published: 8080
+        protocol: tcp
+        mode: host
+    networks:
+      - iris
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    restart: unless-stopped
+    ports:
+      - target: 9093
+        published: 9093
+        protocol: tcp
+        mode: host
+    volumes:
+      - "./configs/alertmanager:/config"
+      - alertmanager-data:/data
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      TZ: "America/Denver"
+    command: --config.file=/config/alertmanager.yml --log.level=debug
+    networks:
+      - iris
+
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    env_file: .env
+    environment:
+            DOCKER_INFLUXDB_INIT_MODE: setup
+            DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME}
+            DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD}
+            DOCKER_INFLUXDB_INIT_ORG: iot
+            DOCKER_INFLUXDB_INIT_BUCKET: users_business_events
+            DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
+    restart: unless-stopped
+    ports:
+      - target: 8086
+        published: 8086
+        protocol: tcp
+        mode: host
+    volumes:
+      - ./docker_volumes/influxdb2/config:/etc/influxdb2
+      - ./docker_volumes/influxdb2/db:/var/lib/influxdb2
+    networks:
+      - iris
+
+  grafana:
+    image: grafana/grafana:7.5.7
+    ports:
+      - target: 3000
+        published: 3000
+        protocol: tcp
+        mode: host
+    restart: unless-stopped
+    volumes:
+      - ./configs/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - grafana-data:/var/lib/grafana
+    networks:
+      - iris
+
+  filebeat:
+    depends_on:
+     - logstash
+     - oncall-green
+     - oncall-mysql
+    image: elastic/filebeat:8.10.3
+    user: root
+    volumes:
+     - filebeatdata:/usr/share/filebeat/data
+     - "./filebeat_ingest_data/:/usr/share/filebeat/ingest_data/"
+     - "./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro"
+     - db_logs:/var/log/mysql
+     - oncall_logs:/home/oncall/var/log/uwsgi
+     - nginx_oncall_logs:/home/oncall/var/log/nginx
+    networks:
+      - iris
+
+
+  elasticsearch:
+    image: elasticsearch:7.16.1
+    volumes:
+      - ./configs/elasticsearch/config.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./docker_volumes/elasticsearch/data:/usr/share/elasticsearch/data
+      - ./docker_volumes/elasticsearch/logs:/usr/share/elasticsearch/logs/
+    environment:
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
+      ELASTIC_USERNAME: "elastic"
+      ELASTIC_PASSWORD: "MyPw123"
+      discovery.type: single-node
+    networks:
+      - iris
+    ports:
+      - target: 9200
+        published: 9200
+        protocol: tcp
+        mode: host
+      - target: 9300
+        published: 9300
+        protocol: tcp
+        mode: host
+
+  logstash:
+    image: logstash:7.16.2
+    volumes:
+      - ./configs/logstash/patterns:/usr/share/logstash/config/patterns:ro
+      - ./configs/logstash/config.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./configs/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./configs/logstash/pipelines:/usr/share/logstash/config/pipelines:ro
+    environment:
+      LS_JAVA_OPTS: "-Xmx512m -Xms512m"
+    ports:
+      - target: 5044
+        published: 5044
+        protocol: tcp
+        mode: host
+      - target: 5000
+        published: 5000
+        protocol: tcp
+        mode: host
+      - target: 9600
+        published: 9600
+        protocol: tcp
+        mode: host
+    networks:
+      - iris
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: kibana:7.16.1
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./configs/kibana/config.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - iris
+    ports:
+      - target: 5601
+        published: 5601
+        protocol: tcp
+        mode: host
+
+
+  mysql-exporter:
+    image: prom/mysqld-exporter
+    command: 
+      - "--collect.global_status"
+      - "--collect.info_schema.innodb_metrics"
+      - "--collect.auto_increment.columns"
+      - "--collect.info_schema.processlist"
+      - "--collect.binlog_size"
+      - "--collect.info_schema.tablestats"
+      - "--collect.global_variables"
+      - "--collect.info_schema.query_response_time"
+      - "--collect.info_schema.userstats"
+      - "--collect.info_schema.tables"
+      - "--collect.perf_schema.tablelocks"
+      - "--collect.perf_schema.file_events"
+      - "--collect.perf_schema.eventswaits"
+      - "--collect.perf_schema.indexiowaits"
+      - "--collect.perf_schema.tableiowaits"
+    volumes:
+      - ./configs/my.cnf:/.my.cnf
+    ports:
+      - target: 9104
+        published: 9104
+        protocol: tcp
+        mode: host
+    networks:
+      - iris
+
+  custom-exporter:
+    image: kirillvelichkoa/oncall_custom_exporter:latest
+    hostname: custom-exporter
+    container_name: custom-exporter
+    ports:
+      - target: 9210
+        published: 9210
+        protocol: tcp
+        mode: host
+    networks:
+      - iris
+
+  custom-exporter2:
+    image: kirillvelichkoa/oncall_custom_exporter2:latest
+    hostname: custom-exporter2
+    container_name: custom-exporter2
+    ports:
+      - target: 9211
+        published: 9211
+        protocol: tcp
+        mode: host
+    networks:
+      - iris
+
+  sla_calcer:
+    depends_on:
+      - influxdb
+    hostname: sla_calcer
+    container_name: sla_calcer
+    image: kirillvelichkoa/oncall_sla_calcer:latest
+    env_file: .env
+    networks:
+      - iris
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    hostname: nginx_exporter
+    ports:
+      - target: 9113
+        published: 9113
+        protocol: tcp
+        mode: host
+    command:
+      - -nginx.scrape-uri
+      - http://nginx_oncall:8083/stub_status
+    networks:
+      - iris
+
+
+
+  blue-green-redirecter:
+    image: kirillvelichkoa/green_blue_proxy:latest
+    hostname: bg
+    container_name: bg
+    ports: 
+      - target: 8085
+        published: 8085
+        protocol: tcp
+        mode: host
+    networks:
+      - iris
+  
+
+  oncall-green:
+    image: kirillvelichkoa/custom_oncall:latest
+    hostname: oncall-green
+    container_name: oncall-green     
+    ports:
+      - target: 8081
+        published: 8081
+        protocol: tcp
+        mode: host
+    environment:
+      - DOCKER_DB_BOOTSTRAP=1
+      - IRIS_API_HOST=iris
+    volumes:
+      - ./ops/config/systemd:/etc/systemd/system
+      - ./ops/daemons:/home/oncall/daemons
+      - ./ops/daemons/uwsgi-docker.yaml:/home/oncall/daemons/uwsgi.yaml
+      - ./db:/home/oncall/db
+      - ./configs/my.cnf:/home/oncall/config/my.cnf
+      - ./ops/entrypoint.py:/home/oncall/entrypoint.py
+      - ./configs/config.docker.yaml:/home/oncall/config/config.yaml
+      - oncall_logs:/home/oncall/var/log/uwsgi
+      - nginx_oncall_logs:/home/oncall/var/log/nginx/
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: continue
+        delay: 10s
+    networks:
+      - iris
+
+  
+  
+  
+  oncall-mysql:
+    hostname: oncall-mysql
+    image: mysql:8.0
+    volumes:
+      #- ./mysql-data:/var/lib/mysql
+      - ./db/entr:/docker-entrypoint-initdb.d
+      - "db_logs:/var/log/mysql"
+      - "./mysql/conf:/etc/mysql/conf.d"
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+    networks:
+      - iris
+  
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - target: 9100
+        published: 9100
+        protocol: tcp
+        mode: host
+    networks:
+      - iris
+
+
+  blackbox:
+    image: prom/blackbox-exporter
+    container_name: blackbox
+    hostname: blackbox
+    ports:
+      - target: 9115
+        published: 9115
+        protocol: tcp
+        mode: host
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/blackbox/blackbox.yml"
+    volumes:
+      - ./blackbox:/etc/blackbox
+    environment:
+      TZ: "Europe/Moscow"
+    networks:
+      - iris
+
+  prometheus:
+    image: prom/prometheus:v2.36.2
+    container_name: prometheus
+    hostname: prometheus
+    ports:
+      - target: 9090
+        published: 9090
+        protocol: tcp
+        mode: host
+    command:
+    - '--config.file=/etc/prometheus/prometheus.yml' 
+    - '--web.console.libraries=/usr/share/prometheus/console_libraries' 
+    - '--web.console.templates=/usr/share/prometheus/consoles'
+    #- '--enable_feature=agent'
+    volumes:
+    - ./prometheus:/etc/prometheus/
+    - prometheus_data:/prometheus
+    restart: always
+    environment:
+      - TZ=Europe/Moscow
+    networks:
+      - iris
+
+      
+
+
+
+
+
+networks:
+  iris:
+    name: iris
+    #ipam:
+    # config:
+    #  - subnet: "192.168.96.0/20"
+    #    gateway: "192.168.96.1"

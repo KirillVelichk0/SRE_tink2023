@@ -1,0 +1,6 @@
+green_url: http://localhost:8081
+blue_url: http://localhost:8082
+green_name: prod_oncall-green
+blue_name: prod_oncall-blue
+seconds_to_try: 1500
+redirecter_url: http://localhost:8085

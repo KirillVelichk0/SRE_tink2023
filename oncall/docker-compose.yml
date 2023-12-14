@@ -209,6 +209,7 @@ services:
     networks:
       - iris
 
+
   nginx: 
     image: nginx:latest
     hostname: nginx_oncall
@@ -223,6 +224,14 @@ services:
     networks:
       - iris
 
+  blue-green-redirecter:
+    image: kirillvelichkoa/green_blue_proxy:latest
+    hostname: bg
+    container_name: bg
+    ports: 
+    - "8085:8085"
+    networks:
+      - iris
 
   oncall-web:
     image: kirillvelichkoa/custom_oncall:latest
