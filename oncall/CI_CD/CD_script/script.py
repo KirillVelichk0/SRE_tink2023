@@ -90,6 +90,7 @@ elif isGreen:
     if CheckBlueToOk():
         print("Blue is ok")
         ChangeToBlue()
+        time.sleep(5)
         TryToRmGreen()
     else:
         print("Blue is bad")
@@ -100,6 +101,7 @@ else:
     if CheckGreenToOk():
         print("Green is ok")
         ChangeToGreen()
+        time.sleep(5)
         TryToRmBlue()
     else:
         print("Green is bad")
